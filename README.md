@@ -1,12 +1,19 @@
-# AI Agent 代理断线保护
+# AI Agent 代理保护与 VPS 部署
 
 让指定 AI Agent 只能通过认可的代理出口访问公网。VPS 失联或客户端退出时，新请求应当失败；其他应用仍可按自己的分流规则联网。
 
-这是一个可安装的 Agent Skill。它指导执行者找出实际联网的进程、配置本机出口约束，并分别验证分流、DNS、WebRTC 和 IPv6。Windows 原生应用有具体操作示例，其他平台按可用隔离能力适配。附带的 Windows 采样器只读本机连接表。
+本仓库提供两个可独立安装的 Agent Skills：
+
+| 技能 | 用途 |
+| --- | --- |
+| [ai-agent-proxy-guard](skills/ai-agent-proxy-guard/SKILL.md) | 找出实际联网进程，配置本机出口约束，验证分流、DNS、WebRTC 和 IPv6。Windows 有具体示例与只读采样器。 |
+| [ai-agent-vps-setup](skills/ai-agent-vps-setup/SKILL.md) | 部署和维护 Linux VPS 出口：系统、软件、业务端口、SSH、防火墙、BBR、测速与恢复。附服务端配置模板及有流量上限的 HTTPS 测量脚本。 |
+
+VPS 技能以 Ubuntu Server 24.04 LTS、Xray、VLESS + REALITY + Vision、TCP 443 为基线。SSH 使用读者自己服务器的实际端口；新系统通常为 TCP 22。端口选择和 BBR 调整必须经过前后测量，不能保证任意线路提速。
 
 ## 安装
 
-支持 Agent Skills 的工具可从本仓库安装 `skills/ai-agent-proxy-guard`。手动安装时，把这一整个目录复制到工具的技能目录中。以下是用户级目录 `~/.agents/skills/` 的例子。若目标同名目录已存在，先比较版本。
+支持 Agent Skills 的工具可按上表路径安装任一技能。手动安装时，把所需技能的整个目录复制到工具的技能目录中。以下以 `ai-agent-proxy-guard` 和用户级目录 `~/.agents/skills/` 为例；安装 VPS 技能时把示例中的技能名改成 `ai-agent-vps-setup`，仓库地址与克隆目录保持不变。若目标同名目录已存在，先比较版本。
 
 **Windows PowerShell**
 
@@ -33,6 +40,12 @@ git clone https://github.com/easyrome/ai-agent-proxy-guard.git &&
 
 > 用 $ai-agent-proxy-guard 检查指定 AI Agent 的出口。先只读核对实际联网进程、分流、DNS、WebRTC 和 IPv6，告诉我哪些已有证据、哪些还需要断线测试。
 
+安装 VPS 技能后可发送：
+
+> 用 $ai-agent-vps-setup 部署我的 VPS。先核对现有系统、SSH 和业务，给出所需软件与端口；保留恢复路径，再完成配置、客户端验证和性能对照。
+
+仅想诊断慢速时可以明确“先只读测速，不修改线上配置”。服务端模板必须在私有环境生成独有凭据；它不是可直接部署的公共账号。
+
 ## 验收要看什么
 
 | 现场情况 | 期望看见的行为 |
@@ -44,4 +57,4 @@ git clone https://github.com/easyrome/ai-agent-proxy-guard.git &&
 
 故障中排队、恢复后才收到回复，须按时间分开记录。CLI、桌面应用、浏览器和 DNS 解析器各自取证。查看 [技能入口](skills/ai-agent-proxy-guard/SKILL.md)。
 
-分流方法参考 [AgentRoute](https://github.com/ryuu-restart/agent-route)，本仓库不分发其规则名单。原创技能和采样器以 [MIT 许可证](LICENSE)开放使用。
+分流方法参考 [AgentRoute](https://github.com/ryuu-restart/agent-route)，本仓库不分发其规则名单。VPS 技能的参考文件包含对应上游官方文档。原创技能与辅助脚本以 [MIT 许可证](LICENSE)开放使用。
