@@ -24,6 +24,14 @@ rules:
 
 sing-box 使用对应版本的入站标签、路由动作和规则集；Xray 前端可能另外生成 TUN 核心配置，两处都要检查。精确域名和后缀的语义不同。对 FakeIP 先还原映射，避免合成地址被当作内网地址放行。检验普通内网、直连、代理、拒绝和受保护目标各一个样本，再检验受保护入站访问 IP 或未知名的样本。[Mihomo 规则](https://wiki.metacubex.one/config/rules/) · [sing-box 路由动作](https://sing-box.sagernet.org/configuration/route/rule_action/)
 
+进程规则要在实际版本、入站和操作系统上证明能取得身份。查找失败时不能假定仍命中保护规则；应核对其后会落到哪里。主程序规则不自动覆盖它启动的 Python、Node、Git、浏览器、工具服务或虚拟机；不能把共享解释器全部锁住来替代身份设计。未知目标和裸 IP 的保护优先依靠专用入站或独立系统边界。[Xray 路由与进程匹配](https://xtls.github.io/en/config/routing.html)
+
+### 持久配置与模式切换
+
+将保护进程/入站/域名规则和对应的专用 DNS 规则置于 `direct`、`global` 等模式分支之前。否则切换模式可能绕过保护。固定出站须逐层检查，不能借 `selector`、`detour`、负载均衡或 DNS fallback 间接落到未批准出口。
+
+GUI 管理配置时，分别核对持久数据库、完整配置模板与当前核心生成配置；只改运行文件可能在重载时丢失。若采用完整模板，记录它接管的路由、DNS 和 TUN 字段；后续 GUI 修改这些字段时要同步复核模板。配置生成或核心重载后，再查规则顺序、监听归属、固定上游和专用解析器，并做一次新的真实请求，不能只凭保存成功判断生效。
+
 AgentRoute 发布 `private`、`reject`、`proxy`、`direct`、`cn-ip` 五类通用资源，按核心选择格式。需要可复现更新时，固定同一 release 提交，核对索引、清单摘要及非空资源，校验后切换本地代际指针。刷新失败保留上一份已验证资源，首次没有好版本时让受保护路径保持关闭。客户端还要证明确实装载了该代规则。仓库不包含上游名单或订阅。[所审阅的 AgentRoute 版本](https://github.com/ryuu-restart/agent-route/tree/39c5ce06f86c08347e31a4decdf1bde58d9dc881) · [客户端适配](https://github.com/ryuu-restart/agent-route/blob/39c5ce06f86c08347e31a4decdf1bde58d9dc881/docs/CLIENTS.md) · [同步与回退实现](https://github.com/ryuu-restart/agent-route/blob/39c5ce06f86c08347e31a4decdf1bde58d9dc881/scripts/sync_rules.py)
 
 ## DNS 要追到解析器的出站
@@ -39,9 +47,13 @@ AgentRoute 发布 `private`、`reject`、`proxy`、`direct`、`cn-ip` 五类通�
 
 故障时在同一受控域下换一个全新标签，同时观察本地解析链和物理出口。保留局域网名称与业务凭据的隐私。故障中的缓存命中可以正常返回；应继续用未缓存样本判断是否存在查询外发。
 
+Windows 使用 NRPT 时，读取 `Get-DnsClientNrptPolicy -Effective` 核对有效命名空间、解析器和回退策略，检查本地 stub 在代理退出后的行为。NRPT 约束系统解析路径，不能据此认定浏览器独立 DoH 或应用自带解析器也受约束；需按实际浏览器的 `DnsOverHttpsMode` 和真实查询路径分别验证。将系统查询指向一个端口无人监听的本地地址，只能得到失败，不能证明正常解析及故障恢复正确。[有效 NRPT 查询](https://learn.microsoft.com/en-us/powershell/module/dnsclient/get-dnsclientnrptpolicy) · [浏览器 DNS 策略](https://support.google.com/chrome/a/answer/2657289)
+
 ## WebRTC 与 IPv6
 
 1. 在**实际使用的浏览器配置档或内嵌运行时**确认 HTTPS 的批准出口。只在用户认可的 STUN/TURN 端点测试；错误配置时，该端点可能看到本地公网地址。优先使用自托管的测试页。使用 Trickle ICE 示例时，开始收集前移除所有预填或从浏览器存储恢复的未批准服务器，确认清单只剩认可的目标。不要把长期 TURN 凭据填入公共演示页。保留代理和系统防护，先在允许路径上确认端点本身可用。[示例页的服务器清单实现](https://github.com/webrtc/samples/blob/gh-pages/src/content/peerconnection/trickle-ice/js/main.js)
 2. 收集 ICE 候选，条件允许时一起检查实际选中的候选对、核心和物理接口流量。`host` 可为私网地址或 mDNS 名称；`srflx` 是 STUN 观察到的映射；`relay` 是 TURN 中继地址，也要核查到中继的连接是否绕路。比较批准的出口**集合**，兼顾 IPv4 和 IPv6，记录是否暴露了未经批准的公网地址。只有内网 host 候选时，另行说明对局域网地址的披露范围。
-3. 对支持的浏览器，可核对 `webRTCIPHandlingPolicy` 的 `disable_non_proxied_udp` 设置及实际生效状态。桌面内嵌引擎需单独验证。需要音视频时复测实际通话；无候选、没有摄像头、只装了扩展或关闭了 UDP，均不能独立证明出口正确。[浏览器隐私接口](https://developer.chrome.com/docs/extensions/reference/api/privacy) · [WebRTC 地址处理规范](https://www.rfc-editor.org/rfc/rfc8828) · [Trickle ICE 测试页](https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/)
+3. 对支持的浏览器，可核对 `webRTCIPHandlingPolicy` 的 `disable_non_proxied_udp` 设置及实际生效状态。Chrome 的 `WebRtcIPHandlingUrl` 按文档 origin 顺序匹配，路径部分不参与；只为已审计服务配置合适的模式，不能把测试页 origin 的结果代替业务 origin。桌面内嵌引擎需单独验证。需要音视频时复测实际通话；无候选、没有摄像头、只装了扩展或关闭了 UDP，均不能独立证明出口正确。[浏览器隐私接口](https://developer.chrome.com/docs/extensions/reference/api/privacy) · [按 URL 处理的官方策略定义](https://chromium.googlesource.com/chromium/src/components/policy/+/c2d823006122fdaf9947de020737c04391a3ada5/resources/templates/policy_definitions/WebRtc/WebRtcIPHandlingUrl.yaml) · [WebRTC 地址处理规范](https://www.rfc-editor.org/rfc/rfc8828)
 4. 核对物理网卡的公网 IPv6、默认路由、隧道 IPv6 路由、解析器和直连阻断。分别证明应用在批准路径能否走 IPv6，以及它能否绕开该路径直出。代理替客户端访问 IPv6 网站只能佐证代理一侧。隧道只支持 IPv4 时，在受保护身份或隔离边界显式阻断 IPv6 外发；保留配置所需的本地链路能力。没有可用 IPv6 对照时，未来有 IPv6 的网络仍为未验证。
+
+记录已有 WebRTC 扩展、浏览器全局策略和按 URL 策略。它们共同生效时，零候选只支持该配置档在该窗口的观察，不能单独归因于新增的一条策略。不要为区分贡献而关闭现有防护；用独立的、非受保护测试身份验证 STUN/TURN 与物理网络阳性对照。实际 profile 的策略读取方法见 [Windows 有效策略核对](system-enforcement.md#有效策略与日常浏览器)。
