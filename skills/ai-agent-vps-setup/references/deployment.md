@@ -42,6 +42,8 @@ sudo apt-get install openssh-server ca-certificates curl unzip ufw fail2ban nfta
 
 已有防火墙继续沿用，避免 UFW、独立 nftables 管理器和云安全组互相覆盖。Fail2ban 调用 nftables 动态加规则不要求启用一个会重载整个规则集的 `nftables.service`。确认自动安全更新的源、日志与重启策略；不在交互式修复中直接做发行版升级或无人值守重启。
 
+新增或迁移入口时使用 [端口角色与变更验收](ports.md) 的清单，先区分 VPS 公网监听、本机回环入口和测试端口。
+
 ## 2. 先保住 SSH
 
 保留当前会话，在另一连接中验证密钥登录以及需要的 sudo 权限。读取 `sshd_config` 的 Include、Match 与实际优先级，再创建本次专用 drop-in；不要假定文件名越靠后越能覆盖已有值。候选设置：
